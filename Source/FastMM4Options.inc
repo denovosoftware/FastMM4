@@ -60,7 +60,7 @@ Set the default options for FastMM here.
  not properly set the IsMultiThread variable. Also set this option if you are
  going to share this memory manager between a single threaded application and a
  multi-threaded DLL.}
-{.$define AssumeMultiThreaded}
+{$define AssumeMultiThreaded}
 
 {Enable this option to not call Sleep when a thread contention occurs. This
  option will improve performance if the ratio of the number of active threads
@@ -215,7 +215,7 @@ Set the default options for FastMM here.
    report memory leaks. This option has no effect if the option
    "EnableMemoryLeakReporting" is not also set. Note that this option does not 
    work with libraries, only EXE projects.}
-  {.$define RequireDebuggerPresenceForLeakReporting}
+  {$define RequireDebuggerPresenceForLeakReporting}
 
   {Set this option to require the presence of debug info ($D+ option) in the
    compiled unit to perform memory leak checking. This option has no effect if
@@ -325,10 +325,8 @@ Set the default options for FastMM here.
   {Specify the options you use for release versions below}
   {$define NoDebugInfo}
   {$define NoMessageBoxes}
-  {$define RequireDebuggerPresenceForLeakReporting}
 {$else}
   {Specify the options you use for debugging below}
-  {$define RequireDebuggerPresenceForLeakReporting}
   {$define CheckHeapForCorruption}
   {$define FullDebugMode}
   {$define CatchUseOfFreedInterfaces}
