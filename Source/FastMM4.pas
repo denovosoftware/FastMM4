@@ -1297,7 +1297,8 @@ procedure PopAllocationGroup;
  AFirstAllocationGroupToLog or it is zero, then all allocation groups are
  logged. This routine also checks the memory pool for consistency at the same
  time, raising an "Out of Memory" error if the check fails.}
-procedure LogAllocatedBlocksToFile(AFirstAllocationGroupToLog, ALastAllocationGroupToLog: Cardinal);
+procedure LogAllocatedBlocksToFile(AFirstAllocationGroupToLog,
+    ALastAllocationGroupToLog, ASmallestBlockSize, ALargestBlockSize: Cardinal);
 {$endif}
 
 {Releases all allocated memory (use with extreme care)}
@@ -9079,8 +9080,10 @@ end;
 {Subroutine for LogAllocatedBlocksToFile and ScanMemoryPoolForCorruptions:
  Scans the memory pool for corruptions and optionally logs allocated blocks
  in the allocation group range.}
-procedure InternalScanMemoryPool(AFirstAllocationGroupToLog, ALastAllocationGroupToLog: Cardinal);
+procedure InternalScanMemoryPool(AFirstAllocationGroupToLog,
+    ALastAllocationGroupToLog, ASmallestBlockSize, ALargestBlockSize: Cardinal);
 var
+  blockSize: NativeUInt;
   LPLargeBlock: PLargeBlockHeader;
   LPMediumBlock: Pointer;
   LPMediumBlockPoolHeader: PMediumBlockPoolHeader;
@@ -9106,7 +9109,9 @@ begin
           if (LMediumBlockHeader and IsSmallBlockPoolInUseFlag) <> 0 then
           begin
             {Get all the leaks for the small block pool}
-            InternalScanSmallBlockPool(LPMediumBlock, AFirstAllocationGroupToLog, ALastAllocationGroupToLog);
+            if (PSmallBlockPoolHeader(LPMediumBlock).BlockType.BlockSize >= ASmallestBlockSize) and
+               (PSmallBlockPoolHeader(LPMediumBlock).BlockType.BlockSize <= ALargestBlockSize) then
+              InternalScanSmallBlockPool(LPMediumBlock, AFirstAllocationGroupToLog, ALastAllocationGroupToLog);
           end
           else
           begin
@@ -9115,7 +9120,10 @@ begin
               if (PFullDebugBlockHeader(LPMediumBlock).AllocationGroup >= AFirstAllocationGroupToLog)
                 and (PFullDebugBlockHeader(LPMediumBlock).AllocationGroup <= ALastAllocationGroupToLog) then
               begin
-                LogMemoryLeakOrAllocatedBlock(LPMediumBlock, False);
+                blockSize := GetAvailableSpaceInBlock(LPMediumBlock) - FullDebugBlockOverhead;
+                if (blockSize >= ASmallestBlockSize) and
+                   (blockSize <= ALargestBlockSize) then
+                  LogMemoryLeakOrAllocatedBlock(LPMediumBlock, False);
               end;
             end
             else
@@ -9143,7 +9151,10 @@ begin
         if (PFullDebugBlockHeader(PByte(LPLargeBlock) + LargeBlockHeaderSize).AllocationGroup >= AFirstAllocationGroupToLog)
           and (PFullDebugBlockHeader(PByte(LPLargeBlock) + LargeBlockHeaderSize).AllocationGroup <= ALastAllocationGroupToLog) then
         begin
-          LogMemoryLeakOrAllocatedBlock(Pointer(PByte(LPLargeBlock) + LargeBlockHeaderSize), False);
+          blockSize := GetAvailableSpaceInBlock(Pointer(PByte(LPLargeBlock) + LargeBlockHeaderSize)) - FullDebugBlockOverhead;
+          if (blockSize >= ASmallestBlockSize) and
+             (blockSize <= ALargestBlockSize) then
+            LogMemoryLeakOrAllocatedBlock(Pointer(PByte(LPLargeBlock) + LargeBlockHeaderSize), False);
         end;
       end
       else
@@ -9162,7 +9173,8 @@ end;
  AFirstAllocationGroupToLog or it is zero, then all allocation groups are
  logged. This routine also checks the memory pool for consistency at the same
  time, raising an "Out of Memory" error if the check fails.}
-procedure LogAllocatedBlocksToFile(AFirstAllocationGroupToLog, ALastAllocationGroupToLog: Cardinal);
+procedure LogAllocatedBlocksToFile(AFirstAllocationGroupToLog,
+    ALastAllocationGroupToLog, ASmallestBlockSize, ALargestBlockSize: Cardinal);
 begin
   {Validate input}
   if (ALastAllocationGroupToLog = 0) or (ALastAllocationGroupToLog < AFirstAllocationGroupToLog) then
@@ -9171,8 +9183,14 @@ begin
     AFirstAllocationGroupToLog := 0;
     ALastAllocationGroupToLog := $ffffffff;
   end;
+  if (ALargestBlockSize = 0) or (ALargestBlockSize < ASmallestBlockSize) then
+  begin
+    {Bad input: log all memory sizes}
+    ASmallestBlockSize := 0;
+    ALargestBlockSize := $ffffffff;
+  end;
   {Scan the memory pool, logging allocated blocks in the requested range.}
-  InternalScanMemoryPool(AFirstAllocationGroupToLog, ALastAllocationGroupToLog);
+  InternalScanMemoryPool(AFirstAllocationGroupToLog, ALastAllocationGroupToLog, ASmallestBlockSize, ALargestBlockSize);
 end;
 
 {Scans the memory pool for any corruptions. If a corruption is encountered an "Out of Memory" exception is
@@ -9180,7 +9198,7 @@ end;
 procedure ScanMemoryPoolForCorruptions;
 begin
   {Scan the memory pool for corruptions, but don't log any allocated blocks}
-  InternalScanMemoryPool($ffffffff, 0);
+  InternalScanMemoryPool($ffffffff, 0, 0, $ffffffff);
 end;
 
 {-----------------------Invalid Virtual Method Calls-------------------------}
