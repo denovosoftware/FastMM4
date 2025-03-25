@@ -149,7 +149,7 @@ Set the default options for FastMM here.
    logged, even if they are "expected" leaks registered through
    AddExpectedMemoryLeaks. Expected leaks registered by pointer may be excluded
    through the HideExpectedLeaksRegisteredByPointer option.}
-  {$define LogMemoryLeakDetailToFile}
+  {.$define LogMemoryLeakDetailToFile}
 
   {Deletes the error log file on startup. No effect if LogErrorsToFile is not
    also set.}
@@ -215,7 +215,7 @@ Set the default options for FastMM here.
    report memory leaks. This option has no effect if the option
    "EnableMemoryLeakReporting" is not also set. Note that this option does not 
    work with libraries, only EXE projects.}
-  {$define RequireDebuggerPresenceForLeakReporting}
+  {.$define RequireDebuggerPresenceForLeakReporting}
 
   {Set this option to require the presence of debug info ($D+ option) in the
    compiled unit to perform memory leak checking. This option has no effect if
@@ -327,11 +327,17 @@ Set the default options for FastMM here.
   {$define NoMessageBoxes}
 {$else}
   {Specify the options you use for debugging below}
-  {$define CheckHeapForCorruption}
   {$define FullDebugMode}
   {$define CatchUseOfFreedInterfaces}
   {$define LoadDebugDLLDynamically}
   {$define EnableMemoryLeakReporting}
+
+  {$ifndef ForDTI}
+    {$define LogMemoryLeakDetailToFile}
+    {$define RequireDebuggerPresenceForLeakReporting}
+  {$else}
+    {$define NoMessageBoxes}
+  {$endif}
 {$endif}
 
 {--------------------Compilation Options For borlndmm.dll---------------------}
