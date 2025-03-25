@@ -1356,14 +1356,20 @@ procedure WalkAllocatedBlocks(ACallBack: TWalkAllocatedBlocksCallback; AUserData
 function LogMemoryManagerStateToFile(const AFileName: string; const AAdditionalDetails: string = ''): Boolean;
 
 {$ifdef FullDebugMode}
+
+{$ifdef DetailedMemLeak}
+var
+  StackTraceDepth: Integer = 21;
+{$endif}
 {-------------FullDebugMode constants---------------}
 const
   {The stack trace depth. (Must be an *uneven* number to ensure that the
    Align16Bytes option works in FullDebugMode.)}
-{$ifdef DetailedDTIMemLeak}
-  StackTraceDepth = 21;
+{$ifdef DetailedMemLeak}
+  StackTraceDepthMax = 51;
 {$else}
   StackTraceDepth = 11;
+  StackTraceDepthMax = StackTraceDepth;
 {$endif}
   {The number of entries in the allocation group stack}
   AllocationGroupStackSize = 1000;
@@ -1385,7 +1391,7 @@ const
 {-------------------------FullDebugMode structures--------------------}
 type
   PStackTrace = ^TStackTrace;
-  TStackTrace = array[0..StackTraceDepth - 1] of NativeUInt;
+  TStackTrace = array[0..StackTraceDepthMax - 1] of NativeUInt;
 
   TBlockOperation = (boBlockCheck, boGetMem, boFreeMem, boReallocMem);
 

@@ -10,6 +10,29 @@ uses
   FastMMRemoteStateServer in 'FastMMRemoteStateServer.pas',
   FastMMStateProvider in 'FastMMStateProvider.pas';
 
+{$IFDEF DEBUG}
+var
+  glLeakCounter: integer = 0;
+
+function LeakMethod: Boolean;
 begin
+  Inc(glLeakCounter);
+  Result := glLeakCounter = StackTraceDepth;
+  if Result then
+    TObject.Create
+  else
+    Result := LeakMethod;
+end;
+{$ENDIF}
+
+begin
+{$ifdef DetailedMemLeak}
+  StackTraceDepth := 41;
+{$endif}
   Writeln('FastMM');
+
+{$IFDEF DEBUG}
+  LeakMethod;
+  ScanMemoryPoolForCorruptions;
+{$ENDIF}
 end.
