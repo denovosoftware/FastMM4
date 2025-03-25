@@ -90,7 +90,8 @@ type
 procedure GetStackRange(var AStackBaseAddress, ACurrentStackPointer: NativeUInt);
 asm
   {$if SizeOf(Pointer) = 8}
-  mov rax, gs:[abs 8]
+  mov rax, gs:[abs $30]
+  mov rax, [rax + 8]
   mov [rcx], rax
   mov [rdx], rbp
   {$else}
