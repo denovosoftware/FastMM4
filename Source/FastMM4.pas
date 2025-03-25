@@ -1264,6 +1264,12 @@ var
 
 {$ifndef FullDebugMode}
 {The standard memory manager functions}
+{$ifdef DNSLockingMM}
+function DNSFastGetMem(ASize: {$ifdef XE2AndUp}NativeInt{$else}Integer{$endif}): Pointer;
+function DNSFastFreeMem(APointer: Pointer): Integer;
+function DNSFastReallocMem(APointer: Pointer; ANewSize: {$ifdef XE2AndUp}NativeInt{$else}Integer{$endif}): Pointer;
+function DNSFastAllocMem(ASize: {$ifdef XE2AndUp}NativeInt{$else}Cardinal{$endif}): Pointer;
+{$endif}
 function FastGetMem(ASize: {$ifdef XE2AndUp}NativeInt{$else}Integer{$endif}): Pointer;
 function FastFreeMem(APointer: Pointer): Integer;
 function FastReallocMem(APointer: Pointer; ANewSize: {$ifdef XE2AndUp}NativeInt{$else}Integer{$endif}): Pointer;
@@ -1997,12 +2003,21 @@ var
   ExpectedMemoryLeaks: PExpectedMemoryLeaks;
   ExpectedMemoryLeaksListLocked: Boolean;
 {$endif}
+
+{$ifdef FullDebugMode}
+  {$define DNSIncludeThreadLocks}
+{$endif}
+{$ifdef DNSLockingMM}
+  {$define DNSIncludeThreadLocks}
+{$endif}
   {---------------------Full Debug Mode structures--------------------}
 {$ifdef FullDebugMode}
   {The allocation group stack}
   AllocationGroupStack: array[0..AllocationGroupStackSize - 1] of Cardinal;
   {The allocation group stack top (it is an index into AllocationGroupStack)}
   AllocationGroupStackTop: Cardinal;
+{$endif}
+{$ifdef DNSIncludeThreadLocks}
   {The last allocation number used}
   CurrentAllocationNumber: Cardinal;
   {This is a count of the number of threads currently inside any of the
@@ -2011,6 +2026,8 @@ var
    allocate, free or reallocate any block or modify any FullDebugMode
    block header or footer.}
   ThreadsInFullDebugModeRoutine: Integer;
+{$endif}
+{$ifdef FullDebugMode}
   {The current log file name}
   MMLogFileName: array[0..1023] of AnsiChar;
   {The 64K block of reserved memory used to trap invalid memory accesses using
@@ -7817,8 +7834,8 @@ end;
 
 {-----------------Full Debug Mode Memory Manager Interface--------------------}
 
-{$ifdef FullDebugMode}
 
+{$ifdef DNSIncludeThreadLocks}
 {Compare [AAddress], CompareVal:
  If Equal: [AAddress] := NewVal and result = CompareVal
  If Unequal: Result := [AAddress]}
@@ -7926,7 +7943,9 @@ begin
   if ThreadsInFullDebugModeRoutine = -1 then
     ThreadsInFullDebugModeRoutine := 0;
 end;
+{$endif}
 
+{$ifdef FullDebugMode}
 procedure DeleteEventLog;
 begin
   {Delete the file}
@@ -11458,17 +11477,29 @@ begin
 {$endif}
       {We will be using this memory manager}
 {$ifndef FullDebugMode}
+{$ifdef DNSLockingMM}
+
+      NewMemoryManager.GetMem := DnsFastGetMem;
+      NewMemoryManager.FreeMem := DnsFastFreeMem;
+      NewMemoryManager.ReallocMem := DnsFastReallocMem;
+{$else}
+
       NewMemoryManager.GetMem := FastGetMem;
       NewMemoryManager.FreeMem := FastFreeMem;
       NewMemoryManager.ReallocMem := FastReallocMem;
-{$else}
+{$endif}
+      {$else}
       NewMemoryManager.GetMem := DebugGetMem;
       NewMemoryManager.FreeMem := DebugFreeMem;
       NewMemoryManager.ReallocMem := DebugReallocMem;
 {$endif}
 {$ifdef BDS2006AndUp}
   {$ifndef FullDebugMode}
+     {$ifdef DNSLockingMM}
+      NewMemoryManager.AllocMem := DNSFastAllocMem;
+	 {$else}
       NewMemoryManager.AllocMem := FastAllocMem;
+	  {$endif}
   {$else}
       NewMemoryManager.AllocMem := DebugAllocMem;
   {$endif}
@@ -11709,6 +11740,47 @@ begin
   end;
 {$endif}
 end;
+
+{$ifdef DNSLockingMM}
+function DNSFastGetMem(ASize: {$ifdef XE2AndUp}NativeInt{$else}Integer{$endif}): Pointer;
+begin
+  try
+    startChangingFullDebugModeBlock;
+    Result := FastGetMem(aSize);
+  finally
+    doneChangingFullDebugModeBlock;
+  end;
+end;
+function DNSFastFreeMem(APointer: Pointer): Integer;
+begin
+  try
+    startChangingFullDebugModeBlock;
+    Result := FastFreeMem(aPointer);
+  finally
+    doneChangingFullDebugModeBlock;
+  end;
+end;
+
+function DNSFastReallocMem(APointer: Pointer; ANewSize: {$ifdef XE2AndUp}NativeInt{$else}Integer{$endif}): Pointer;
+begin
+  try
+    startChangingFullDebugModeBlock;
+    Result := FastReallocMem(aPointer,aNewSize);
+  finally
+    doneChangingFullDebugModeBlock;
+  end;
+end;
+
+function DNSFastAllocMem(ASize: {$ifdef XE2AndUp}NativeInt{$else}Cardinal{$endif}): Pointer;
+begin
+  try
+    startChangingFullDebugModeBlock;
+    Result := FastAllocMem(aSize);
+  finally
+    doneChangingFullDebugModeBlock;
+  end;
+end;
+{$endif}
 
 initialization
   RunInitializationCode;
