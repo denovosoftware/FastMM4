@@ -1360,7 +1360,11 @@ function LogMemoryManagerStateToFile(const AFileName: string; const AAdditionalD
 const
   {The stack trace depth. (Must be an *uneven* number to ensure that the
    Align16Bytes option works in FullDebugMode.)}
+{$ifdef DetailedDTIMemLeak}
+  StackTraceDepth = 21;
+{$else}
   StackTraceDepth = 11;
+{$endif}
   {The number of entries in the allocation group stack}
   AllocationGroupStackSize = 1000;
   {The number of fake VMT entries - used to track virtual method calls on

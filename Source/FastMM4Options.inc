@@ -334,7 +334,11 @@ Set the default options for FastMM here.
 
   {$ifndef ForDTI}
     {$define LogMemoryLeakDetailToFile}
-    {$define RequireDebuggerPresenceForLeakReporting}
+    {$ifndef DetailedDTIMemLeak}
+      {$define RequireDebuggerPresenceForLeakReporting}
+    {$else}
+      {$define NoMessageBoxes}
+    {$endif}
   {$else}
     {$define NoMessageBoxes}
   {$endif}
